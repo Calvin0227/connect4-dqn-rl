@@ -5,7 +5,7 @@ class Connect4Env:
         self.rows = rows
         self.cols = cols
         
-        # Board is a matrix:
+        # The Board is a matrix:
         #  1 = agent piece
         # -1 = opponent piece
         #  0 = empty

@@ -2,7 +2,7 @@ import random
 import numpy as np
 from collections import deque
 
-# Data structure that stores all experiences (we will use these experiences, which are just tuples of features, as training data for DQN)
+# The Data structure that stores all experiences (we will use these experiences, which are just tuples of features, as training data for DQN)
 class ReplayBuffer:
     # construct a replay buffer (double sided queue = deque) with a maximum capacity of 50,000 experiences
     def __init__(self, capacity=50000): 
