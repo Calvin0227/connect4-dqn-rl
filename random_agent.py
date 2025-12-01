@@ -1,4 +1,4 @@
-import random # For selecting random move (an action)
+import random # selecting random move (an action)
 from env import Connect4Env # importing the connect 4 environment so it can be used
 from replay_buffer import ReplayBuffer # importing the replay buffer to store experiences
 
