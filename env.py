@@ -4,95 +4,112 @@ class Connect4Env:
     def __init__(self, rows=6, cols=7):
         self.rows = rows
         self.cols = cols
+        
+        # Board is a matrix:
+        #  1 = agent piece
+        # -1 = opponent piece
+        #  0 = empty
         self.board = None
-        self.current_player = 1  # 1 = agent, -1 = opponent
-    
-    def reset(self):
-        """Reset the board and return the initial state"""
-        self.board = np.zeros((self.rows, self.cols), dtype=int)
+        
+        # Player whose turn it is (agent always starts by default)
         self.current_player = 1
+
+    def reset(self):
+        """ 
+        Reset the board for a new episode. 
+        """
+        self.board = np.zeros((self.rows, self.cols), dtype=int)
+        self.current_player = 1   # have the agent start first
         return self.board.copy()
 
     def available_actions(self):
-        """Return a list of columns that are not full"""
-        actions = []
-        for c in range(self.cols):
-            if self.board[0][c] == 0:  # top row empty => column is playable
-                actions.append(c)
-        return actions
+        """
+        Return list of columns where a move is possible.
+        Only columns whose top cell is empty are legal.
+        """
+        return [c for c in range(self.cols) if self.board[0][c] == 0]
 
+    # The function will perform actions in the Connect 4 game
     def step(self, action):
-        """Drop a piece into the selected column and update the board"""
-        # 1. Validate action
-        if action not in self.available_actions():
-            # Illegal move: return big negative reward
-            return self.board.copy(), -10, True
+        """
+        Take one action (drop piece in column).
+        Returns: new_state, reward, and done attributes.
+        """
 
-        # 2. Drop piece to the lowest available row
+        # 1. Handle illegal move
+        if action not in self.available_actions():
+            # Penalize but not end the game, which will help with RL
+            return self.board.copy(), -2, False
+
+        # 2. Drop the piece into the selected column
         for r in range(self.rows - 1, -1, -1):
             if self.board[r][action] == 0:
                 self.board[r][action] = self.current_player
                 break
 
-        # 3. Check win
+        # 3. Check if this move wins the game
         winner = self.check_winner()
         if winner == self.current_player:
-            return self.board.copy(), 1, True  # win reward
+            # Current player won
+            return self.board.copy(), 1, True
 
-        # 4. Check draw
+        # 4. Check draw (board full)
         if len(self.available_actions()) == 0:
             return self.board.copy(), 0, True  # draw
 
-        # 5. Switch player
+        # 5. Switch player for next turn (make sure the game is turn-based)
         self.current_player *= -1
 
-        # 6. Continue game
+        # 6. Continue game with no reward
         return self.board.copy(), 0, False
 
     def check_winner(self):
-        """Return 1 or -1 if a player wins, else 0"""
-        board = self.board
+        """
+        Check board for a 4-in-a-row.
+        Returns 1 (agent), -1 (opponent), or 0 (nobody).
+        """
+        b = self.board
 
         # Horizontal check
         for r in range(self.rows):
             for c in range(self.cols - 3):
-                window = board[r, c:c+4]
-                if abs(sum(window)) == 4 and 0 not in window:
+                window = b[r, c:c+4]
+                if abs(sum(window)) == 4:  # means 4 same pieces
                     return window[0]
 
         # Vertical check
         for c in range(self.cols):
             for r in range(self.rows - 3):
-                window = board[r:r+4, c]
-                if abs(sum(window)) == 4 and 0 not in window:
+                window = b[r:r+4, c]
+                if abs(sum(window)) == 4:
                     return window[0]
 
         # Diagonal (down-right)
         for r in range(self.rows - 3):
             for c in range(self.cols - 3):
-                window = [board[r+i][c+i] for i in range(4)]
-                if abs(sum(window)) == 4 and 0 not in window:
+                window = [b[r+i][c+i] for i in range(4)]
+                if abs(sum(window)) == 4:
                     return window[0]
 
         # Diagonal (up-right)
         for r in range(3, self.rows):
             for c in range(self.cols - 3):
-                window = [board[r-i][c+i] for i in range(4)]
-                if abs(sum(window)) == 4 and 0 not in window:
+                window = [b[r-i][c+i] for i in range(4)]
+                if abs(sum(window)) == 4:
                     return window[0]
 
-        return 0
+        return 0  # no winner 
 
     def print_board(self):
-        """Print board in human-friendly format"""
+        """display board after every turn in."""
         print("\nBoard:")
         for r in range(self.rows):
             line = ""
             for c in range(self.cols):
-                v = self.board[r][c]
-                if v == 1:
+                val = self.board[r][c]
+                if val == 1:
                     line += " X "
-                elif v == -1:
+                elif val == -1:
                     line += " O "
                 else:
                     line += " . "
