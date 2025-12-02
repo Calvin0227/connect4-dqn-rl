@@ -1,22 +1,27 @@
+# data type is int
 import numpy as np
+
+# reset - reset board
+# step - action,return next_state, reward, done
+# available - return availabel action
+# check_winder - check win / lose
+# print_board - print board, for debug
 
 class Connect4Env:
     def __init__(self, rows=6, cols=7):
-        self.rows = rows
-        self.cols = cols
-        
+
         # Board is a matrix:
         #  1 = agent piece
         # -1 = opponent piece
         #  0 = empty
+        self.rows = rows
+        self.cols = cols
         self.board = None
-        
-        # Player whose turn it is (agent always starts by default)
-        self.current_player = 1
+        self.current_player = 1 # 1 = agent, -1 = opponent
 
     def reset(self):
         """ 
-        Reset the board for a new episode. 
+        Reset the board for a new episode and return state
         """
         self.board = np.zeros((self.rows, self.cols), dtype=int)
         self.current_player = 1   # have the agent start first
@@ -39,9 +44,11 @@ class Connect4Env:
         # 1. Handle illegal move
         if action not in self.available_actions():
             # Penalize but not end the game, which will help with RL
+            # so DQN will learn not to make random move
             return self.board.copy(), -2, False
 
         # 2. Drop the piece into the selected column
+        # find the first available space starting from the bottom
         for r in range(self.rows - 1, -1, -1):
             if self.board[r][action] == 0:
                 self.board[r][action] = self.current_player
