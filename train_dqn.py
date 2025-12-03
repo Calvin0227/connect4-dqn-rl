@@ -1,11 +1,12 @@
 import torch
 from env import Connect4Env
 from dqn_agent import DQNAgent
+import random
 
 def train_dqn(
-    episodes=2000,
-    batch_size=64,
-    target_update_interval=50
+    episodes=2000, # how many games will be played
+    batch_size=64, # how many experiences will be sampled each training step
+    target_update_interval=50 # how often training network copies weights from main network
 ):
 
     env = Connect4Env()
@@ -19,17 +20,32 @@ def train_dqn(
         done = False
 
         while not done:
-            available_actions = env.available_actions()
 
-            action = agent.act(state, available_actions)
-            next_state, reward, done = env.step(action)
 
-            agent.remember(state, action, reward, next_state, done)
+          # 1. AGENT MOVE
+          action = agent.act(state, env.available_actions())
+          next_state, reward, done = env.step(action)
 
-            agent.train_step(batch_size)
+          # store agent's experience
+          agent.remember(state, action, reward, next_state, done)
+          agent.train_step(batch_size)
 
-            state = next_state
-            total_reward += reward
+          state = next_state
+          total_reward += reward
+
+          # If opponent wins or game ends, loop stops
+          if done:
+              break
+
+          # 2. OPPONENT MOVE (RANDOM)
+          opp_action = random.choice(env.available_actions())
+          next_state, opp_reward, done = env.step(opp_action)
+
+          # know that opponent reward is bad for agent
+          agent.remember(state, opp_action, -opp_reward, next_state, done)
+
+          # know that opponent does not train the network.
+          state = next_state
 
         # Update target network
         if ep % target_update_interval == 0:

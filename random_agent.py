@@ -1,4 +1,4 @@
-import random # selecting random move (an action)
+import random # selecting random move
 from env import Connect4Env # importing the connect 4 environment so it can be used
 from replay_buffer import ReplayBuffer # importing the replay buffer to store experiences
 
@@ -10,13 +10,13 @@ def random_agent(env, state):
 # Run a full game
 if __name__ == "__main__":
 
-    
-    env = Connect4Env() # create a connect 4 environment 
+
+    env = Connect4Env() # create a connect 4 environment
     state = env.reset() # make sure we have a empty board
     done = False # we know game just started so its not done
     step_count = 0 # represents number of moves that has occured
 
-    # Construct a replay buffer so that the experiences can be stored 
+    # Construct a replay buffer so that the experiences can be stored
     replay_buffer = ReplayBuffer(capacity=50000)
 
     while not done:
@@ -32,10 +32,10 @@ if __name__ == "__main__":
 
         # description of step number, current player, action performed
         print(f"Step {step_count}, Player: {env.current_player * -1}, Action: {action}")
-         
+
         env.print_board() # display board
         state = next_state # update the state
-        step_count += 1 
+        step_count += 1
 
     # Game is done so display the results
     print("Game over!")
