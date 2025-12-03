@@ -9,23 +9,39 @@ import numpy as np
 
 class Connect4Env:
     def __init__(self, rows=6, cols=7):
+        self.rows = rows
+        self.cols = cols
 
         # Board is a matrix:
         #  1 = agent piece
         # -1 = opponent piece
         #  0 = empty
-        self.rows = rows
-        self.cols = cols
         self.board = None
-        self.current_player = 1 # 1 = agent, -1 = opponent
+
+        # Player whose turn it is (agent always starts by default)
+        self.current_player = 1
+
+    # Preprocessor
+    def board_to_cnn_input(self, board):
+      # make sure the board given is converted into a numpy array
+      board = np.array(board, dtype=np.float32)
+
+      # Make channel for player's pieces (1)
+      player_channel = (board == 1).astype('float32')
+
+      # Make channel for opponent's pieces (-1)
+      opponent_channel = (board == -1).astype('float32')
+
+      stacked = np.stack([player_channel, opponent_channel], axis=0)  # (2, 6, 7)
+      return stacked
 
     def reset(self):
-        """ 
-        Reset the board for a new episode and return state
+        """
+        Reset the board for a new episode.
         """
         self.board = np.zeros((self.rows, self.cols), dtype=int)
         self.current_player = 1   # have the agent start first
-        return self.board.copy()
+        return self.board_to_cnn_input(self.board)
 
     def available_actions(self):
         """
@@ -44,11 +60,9 @@ class Connect4Env:
         # 1. Handle illegal move
         if action not in self.available_actions():
             # Penalize but not end the game, which will help with RL
-            # so DQN will learn not to make random move
-            return self.board.copy(), -2, False
+            return self.board_to_cnn_input(self.board), -2, False
 
         # 2. Drop the piece into the selected column
-        # find the first available space starting from the bottom
         for r in range(self.rows - 1, -1, -1):
             if self.board[r][action] == 0:
                 self.board[r][action] = self.current_player
@@ -58,17 +72,17 @@ class Connect4Env:
         winner = self.check_winner()
         if winner == self.current_player:
             # Current player won
-            return self.board.copy(), 1, True
+            return self.board_to_cnn_input(self.board), 1, True
 
         # 4. Check draw (board full)
         if len(self.available_actions()) == 0:
-            return self.board.copy(), 0, True  # draw
+            return self.board_to_cnn_input(self.board), 0, True  # draw
 
         # 5. Switch player for next turn (make sure the game is turn-based)
         self.current_player *= -1
 
         # 6. Continue game with no reward
-        return self.board.copy(), 0, False
+        return self.board_to_cnn_input(self.board), 0, False
 
     def check_winner(self):
         """
@@ -105,7 +119,7 @@ class Connect4Env:
                 if abs(sum(window)) == 4:
                     return window[0]
 
-        return 0  # no winner 
+        return 0  # no winner
 
     def print_board(self):
         """display board after every turn in."""

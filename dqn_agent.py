@@ -3,73 +3,99 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 from replay_buffer import ReplayBuffer
 
+### We are combining a Convolutional Neural Network with Q-learning to make a Deep Q-learning Network
+class Connect4DQN(nn.Module):
 
-# -------------------------
-# Q-Network (a simple MLP)
-# -------------------------
-class QNetwork(nn.Module):
-    def __init__(self, input_dim, output_dim):
-        super(QNetwork, self).__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 128),
+    def __init__(self, num_actions=7): # we want to generate 7 Q-alues (represents an action taken in one of the 7 columns of connect4)
+
+        # initialize the model
+        super().__init__()
+
+        # The input shape required is a tensor of (batch_size, 2, 6, 7)
+        # 6 = height of board; 7 = width of board; 2 = # of channels (player and opponent); batch_size = # of examples used for every update
+
+        # Convolutional component (cnn portion of the whole network)
+        self.conv_layers = nn.Sequential(
+
+            # Learn basic patterns (edges, adjacency, simple lines)
+            nn.Conv2d(in_channels=2, out_channels=32, kernel_size=3, padding=1),
+            # provide non-linearity so that the model can learn more complicated patterns
             nn.ReLU(),
 
-            nn.Linear(128, 128),
+            # Learn more complex patterns (2-in-a-row, simple threats, etc.)
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.ReLU(),
 
-            nn.Linear(128, output_dim)
+            # A refining layer for playing around more with all features already extracted
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+        )
+
+        # Compute linear 1D input size to be given to the fully connected layer:
+        self.flatten_size = 64 * 6 * 7
+
+        # Fully Connected component (fully connected portion of the whole network)
+        self.fc_layers = nn.Sequential(
+
+            # transform input into a 1D structure so it can be used as input for fully connected portion
+            nn.Linear(self.flatten_size, 256),
+            nn.ReLU(),
+            nn.Linear(256, num_actions)   # 7 output neurons for output layer (since we need 7 Q-values)
         )
 
     def forward(self, x):
-        return self.net(x)
+        # x is shape (batch, 2, 6, 7)
+        x = self.conv_layers(x)
+        x = x.view(x.size(0), -1)
+        return self.fc_layers(x)
 
 
-# -------------------------
 # DQN Agent
-# -------------------------
 class DQNAgent:
     def __init__(
         self,
-        state_shape=(6, 7),
-        action_size=7,
-        lr=1e-3,
-        gamma=0.99,
-        epsilon_start=1.0,
-        epsilon_end=0.1,
-        epsilon_decay=0.995
+        state_shape=(6, 7), # shape of the board
+        num_actions=7, # number of possible actions
+        lr=1e-3, # learning rate
+        gamma=0.99, # dicount factor
+        epsilon_start=1.0, # pure random
+        epsilon_end=0.1, # minimum exploration
+        epsilon_decay=0.995 # gradually reduce randomness
     ):
-        self.state_dim = state_shape[0] * state_shape[1]  # flatten 6x7 → 42 input
-        self.action_size = action_size
+        self.num_actions = num_actions
 
-        self.model = QNetwork(self.state_dim, action_size)
-        self.target_model = QNetwork(self.state_dim, action_size)
+        # construct a connect4DQN model for main network
+        self.model = Connect4DQN(num_actions)
+        # construct a connect4DQN model for target network
+        self.target_model = Connect4DQN(num_actions)
+
         self.target_model.load_state_dict(self.model.state_dict())  # sync target
 
+        # Use the Adam optimizer
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
+        # Use MSE loss function
         self.loss_fn = nn.MSELoss()
 
         self.gamma = gamma
 
-        # epsilon-greedy exploration
+        # epsilon-greedy exploration (determines how random the moves are during training)
         self.epsilon = epsilon_start
         self.epsilon_end = epsilon_end
         self.epsilon_decay = epsilon_decay
 
-        # replay buffer
+        # construct replay buffer and use as memory
         self.memory = ReplayBuffer(capacity=50000)
 
-    # -----------
+
     # Choose action
-    # -----------
     def act(self, state, available_actions):
         if random.random() < self.epsilon:
             return random.choice(available_actions)
 
-        state = np.array(state).reshape(1, -1)
-        state_tensor = torch.FloatTensor(state)
+        # convert to tensor
+        state_tensor = torch.FloatTensor(state).unsqueeze(0)  # (1, 2, 6, 7)
 
         q_values = self.model(state_tensor).detach().numpy()[0]
 
@@ -78,23 +104,23 @@ class DQNAgent:
 
         return best_action
 
-    # -----------
     # Store a transition
-    # -----------
     def remember(self, state, action, reward, next_state, done):
         self.memory.push(state, action, reward, next_state, done)
 
-    # -----------
+
     # Train one step
-    # -----------
     def train_step(self, batch_size=64):
         if len(self.memory) < batch_size:
             return
 
         states, actions, rewards, next_states, dones = self.memory.sample(batch_size)
 
-        states = torch.FloatTensor(states.reshape(batch_size, -1))
-        next_states = torch.FloatTensor(next_states.reshape(batch_size, -1))
+        # convert to tensor
+        states = torch.FloatTensor(states)
+        next_states = torch.FloatTensor(next_states)
+
+
         actions = torch.LongTensor(actions)
         rewards = torch.FloatTensor(rewards)
         dones = torch.FloatTensor(dones)
@@ -114,8 +140,7 @@ class DQNAgent:
         if self.epsilon > self.epsilon_end:
             self.epsilon *= self.epsilon_decay
 
-    # -----------
+
     # Update target network occasionally
-    # -----------
     def update_target(self):
         self.target_model.load_state_dict(self.model.state_dict())
