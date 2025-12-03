@@ -5,6 +5,10 @@ import torch.nn as nn
 import torch.optim as optim
 from replay_buffer import ReplayBuffer
 
+# Detect GPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 ### We are combining a Convolutional Neural Network with Q-learning to make a Deep Q-learning Network
 class Connect4DQN(nn.Module):
 
@@ -65,11 +69,12 @@ class DQNAgent:
         epsilon_decay=0.995 # gradually reduce randomness
     ):
         self.num_actions = num_actions
+        self.device = device  # Store device reference
 
-        # construct a connect4DQN model for main network
-        self.model = Connect4DQN(num_actions)
-        # construct a connect4DQN model for target network
-        self.target_model = Connect4DQN(num_actions)
+        # construct a connect4DQN model for main network - MOVE TO GPU
+        self.model = Connect4DQN(num_actions).to(device)
+        # construct a connect4DQN model for target network - MOVE TO GPU
+        self.target_model = Connect4DQN(num_actions).to(device)
 
         self.target_model.load_state_dict(self.model.state_dict())  # sync target
 
@@ -94,10 +99,11 @@ class DQNAgent:
         if random.random() < self.epsilon:
             return random.choice(available_actions)
 
-        # convert to tensor
-        state_tensor = torch.FloatTensor(state).unsqueeze(0)  # (1, 2, 6, 7)
+        # convert to tensor - MOVE TO GPU
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)  # (1, 2, 6, 7)
 
-        q_values = self.model(state_tensor).detach().numpy()[0]
+        with torch.no_grad():
+            q_values = self.model(state_tensor).cpu().numpy()[0]  # Move back to CPU for numpy
 
         masked_q = {a: q_values[a] for a in available_actions}
         best_action = max(masked_q, key=masked_q.get)
@@ -116,19 +122,18 @@ class DQNAgent:
 
         states, actions, rewards, next_states, dones = self.memory.sample(batch_size)
 
-        # convert to tensor
-        states = torch.FloatTensor(states)
-        next_states = torch.FloatTensor(next_states)
-
-
-        actions = torch.LongTensor(actions)
-        rewards = torch.FloatTensor(rewards)
-        dones = torch.FloatTensor(dones)
+        # convert to tensor - MOVE TO GPU
+        states = torch.FloatTensor(states).to(self.device)
+        next_states = torch.FloatTensor(next_states).to(self.device)
+        actions = torch.LongTensor(actions).to(self.device)
+        rewards = torch.FloatTensor(rewards).to(self.device)
+        dones = torch.FloatTensor(dones).to(self.device)
 
         q_values = self.model(states)
         q_values = q_values.gather(1, actions.unsqueeze(1)).squeeze()
 
-        next_q = self.target_model(next_states).max(1)[0].detach()
+        with torch.no_grad():
+            next_q = self.target_model(next_states).max(1)[0]
         target = rewards + (1 - dones) * self.gamma * next_q
 
         loss = self.loss_fn(q_values, target)
