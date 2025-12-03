@@ -6,11 +6,22 @@ import random
 def train_dqn(
     episodes=2000, # how many games will be played
     batch_size=64, # how many experiences will be sampled each training step
-    target_update_interval=50 # how often training network copies weights from main network
+    target_update_interval=50, # how often training network copies weights from main network
+    resume=True  # whether to continue training from existing model
 ):
 
     env = Connect4Env()
     agent = DQNAgent()
+
+    # Load existing model if resume=True
+    if resume:
+        try:
+            agent.model.load_state_dict(torch.load("connect4_dqn_model.pth"))
+            agent.target_model.load_state_dict(torch.load("connect4_dqn_model.pth"))
+            agent.epsilon = 0.3  # Lower epsilon since model already trained
+            print("Loaded existing model, continuing training...")
+        except FileNotFoundError:
+            print("No existing model found, starting fresh...")
 
     all_rewards = []
 
