@@ -8,6 +8,9 @@ from dqn_agent import DQNAgent
 CELL_SIZE = 80
 ROWS, COLS = 6, 7
 
+# Detect device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class Connect4UI:
     def __init__(self):
         self.env = Connect4Env()
@@ -20,7 +23,7 @@ class Connect4UI:
         # Load DQN model
         self.dqn_agent = DQNAgent()
         try:
-            self.dqn_agent.model.load_state_dict(torch.load("connect4_dqn_model.pth"))
+            self.dqn_agent.model.load_state_dict(torch.load("connect4_dqn_model.pth", map_location=device))
             self.dqn_agent.model.eval()
             self.dqn_agent.epsilon = 0.0  # Disable exploration
             self.dqn_loaded = True

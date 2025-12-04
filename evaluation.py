@@ -5,12 +5,16 @@ from env import Connect4Env
 from dqn_agent import DQNAgent
 import matplotlib.pyplot as plt
 
+# Detect device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 # Function for evaluating performance of the RL agent
 def evaluate_agent(num_games=100, print_boards=True):
 
     env = Connect4Env()
     agent = DQNAgent()   # Make sure this disables epsilon-greedy
-    agent.model.load_state_dict(torch.load("connect4_dqn_model.pth"))
+    agent.model.load_state_dict(torch.load("connect4_dqn_model.pth", map_location=device))
     agent.model.eval()
     agent.epsilon = 0.0 # disable epsilon-greedy
 
@@ -61,7 +65,7 @@ def evaluate_agent(num_games=100, print_boards=True):
 
     if print_boards:
         print("\n=== Example Final Boards ===")
-        for i in range(3):
+        for i in range(min(3, len(final_boards))):
             print(f"\nGame {i+1} Final Board:")
             print(final_boards[i])
 

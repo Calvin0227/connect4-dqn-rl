@@ -3,6 +3,10 @@ from env import Connect4Env
 from dqn_agent import DQNAgent
 import random
 
+# Detect device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 def train_dqn(
     episodes=2000, # how many games will be played
     batch_size=64, # how many experiences will be sampled each training step
@@ -16,8 +20,8 @@ def train_dqn(
     # Load existing model if resume=True
     if resume:
         try:
-            agent.model.load_state_dict(torch.load("connect4_dqn_model.pth"))
-            agent.target_model.load_state_dict(torch.load("connect4_dqn_model.pth"))
+            agent.model.load_state_dict(torch.load("connect4_dqn_model.pth", map_location=device))
+            agent.target_model.load_state_dict(torch.load("connect4_dqn_model.pth", map_location=device))
             agent.epsilon = 0.3  # Lower epsilon since model already trained
             print("Loaded existing model, continuing training...")
         except FileNotFoundError:
