@@ -69,20 +69,8 @@ def evaluate_agent(num_games=100, print_boards=True):
 
 
 
-# plot reward curve
-#def plot_rewards(reward_list):
-    #plt.figure(figsize=(8, 4))
-    #plt.plot(reward_list)
-    #plt.title("Training Reward Curve")
-    #plt.xlabel("Episode")
-    #plt.ylabel("Episode Reward")
-    #plt.grid(True)
-    #plt.show()
-
-
-
 if __name__ == "__main__":
     # Run evaluation
     evaluate_agent(num_games=50, print_boards=True)
 
-    # If you saved rewards: plot_rewards(all_rewards)
+    
