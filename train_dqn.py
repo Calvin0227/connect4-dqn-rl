@@ -2,6 +2,7 @@ import torch
 from env import Connect4Env
 from dqn_agent import DQNAgent
 import random
+import matplotlib.pyplot as plt 
 
 def train_dqn(
     episodes=2000, # how many games will be played
@@ -13,6 +14,7 @@ def train_dqn(
     agent = DQNAgent()
 
     all_rewards = []
+    all_losses = [] 
 
     for ep in range(episodes):
         state = env.reset()
@@ -28,7 +30,10 @@ def train_dqn(
 
           # store agent's experience
           agent.remember(state, action, reward, next_state, done)
-          agent.train_step(batch_size)
+
+          loss = agent.train_step(batch_size)   # capture loss
+          if loss is not None:                   
+              all_losses.append(loss)         
 
           state = next_state
           total_reward += reward
@@ -37,7 +42,7 @@ def train_dqn(
           if done:
               break
 
-          # 2. OPPONENT MOVE (RANDOM)
+          # opponent move random (random)
           opp_action = random.choice(env.available_actions())
           next_state, opp_reward, done = env.step(opp_action)
 
@@ -58,6 +63,15 @@ def train_dqn(
     # save model
     torch.save(agent.model.state_dict(), "connect4_dqn_model.pth")
     print("\nTraining finished. Model saved as connect4_dqn_model.pth")
+
+    # plot loss curve   
+    plt.figure(figsize=(8, 4))  
+    plt.plot(all_losses)        
+    plt.xlabel("Training Step") 
+    plt.ylabel("Loss")          
+    plt.title("DQN Training Loss Over Time")  
+    plt.grid(True)             
+    plt.show()                 
 
     return all_rewards
 

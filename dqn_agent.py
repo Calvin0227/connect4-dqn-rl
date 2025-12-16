@@ -140,6 +140,8 @@ class DQNAgent:
         if self.epsilon > self.epsilon_end:
             self.epsilon *= self.epsilon_decay
 
+        return loss.item()
+
 
     # Update target network occasionally
     def update_target(self):
